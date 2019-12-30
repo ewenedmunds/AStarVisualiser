@@ -106,6 +106,14 @@ def mainLoop():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     isRunning = False
+                elif event.key == pygame.K_r and not isPathfinding:
+                    for cell in cellSprites:
+                        cell.revertColour()
+                elif event.key == pygame.K_c and not isPathfinding:
+                    for cell in cellSprites:
+                        if cell.isWall:
+                            cell.swapWall()
+                            cell.revertColour()
                 elif event.key == pygame.K_p and len(terminalCells) == 2:
                     if isPathfinding:
                         isPathfinding = False
@@ -174,6 +182,8 @@ def mainLoop():
                                 neighbour.colour = (200,200,200)
                         
                         openCells.sort(key=lambda x: x.totalCost)
+                else:
+                    isPathfinding = False
                 
                 
         
