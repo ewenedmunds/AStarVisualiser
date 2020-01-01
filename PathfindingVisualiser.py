@@ -4,11 +4,12 @@ pygame.init()
 
 gameWidth = 800
 gameHeight = 600
+buffer = 125
 
 cellSize = 20
 
-gameDisplay = pygame.Surface((gameWidth,gameHeight))
-screen = pygame.display.set_mode((gameWidth,gameHeight))
+gameDisplay = pygame.Surface((gameWidth,gameHeight+buffer))
+screen = pygame.display.set_mode((gameWidth,gameHeight+buffer))
 
 pygame.display.set_caption("Pathfinding")
 
@@ -54,6 +55,15 @@ class Cell():
             
         self.revertColour()
         
+    def makeWall(self):
+        if not self.isTerminal:
+            self.isWall = True
+            self.revertColour()
+            
+    def removeWall(self):
+        self.isWall = False
+        self.revertColour()
+        
     #Returns the linear distance from this cell to the target cell
     def getLinearCost(self, target):
         return abs(target.x//self.cellSize - self.x//self.cellSize) + abs(target.y//self.cellSize - self.y//self.cellSize)
@@ -85,6 +95,39 @@ class Cell():
         self.revertColour()
         
 
+        
+class Button():
+    def __init__(self, x, y, width, height, text, font):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        
+        self.isActive = False
+        
+        self.text = text
+        self.font = font
+        
+        
+    def draw(self, display):
+        if self.isActive:
+            colour = (20,200,20)
+        else:
+            colour = (200,20,20)
+            
+        pygame.draw.rect(display,colour,[self.x, self.y, self.width, self.height])
+        
+        text=font.render(self.text, 1,(0,0,0))
+        display.blit(text,(self.x+5,self.y+15))
+        
+        
+        
+    def mouseClick(self, mousePos):
+        if mousePos[0] >= self.x and mousePos[0] <= self.x + self.width and mousePos[1] >= self.y and mousePos[1] <= self.y + self.height:
+            self.isActive = True
+            return self.text
+        return False
+        
 
 def mainLoop():
     global cellSize
@@ -103,11 +146,24 @@ def mainLoop():
     
     isPathfinding = False
     
+    #Create and add buttons
+    buttons = []
+    buttons.append(Button(0,gameHeight,gameWidth/4.1, 75, "Draw Wall", font))
+    buttons[0].isActive = True
+    buttons.append(Button(gameWidth/4,gameHeight,gameWidth/4.1, 75, "Rem. Wall", font))
+    buttons.append(Button(2*gameWidth/4,gameHeight,gameWidth/4.1, 75, "Set Start/End", font))
+    buttons.append(Button(3*gameWidth/4,gameHeight,gameWidth/4.1, 75, "Reset", font))
+    
+    mouseState = "Draw Wall"
+    
     while isRunning:
         
         #Handle inputs from the player
         events = pygame.event.get()
         for event in events:
+            if event.type == pygame.QUIT:
+                isRunning = False
+                
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     isRunning = False
@@ -141,33 +197,54 @@ def mainLoop():
            
         #Add walls
         if pygame.mouse.get_pressed()[0]:
+            
+            #Button logic
+            for button in buttons:
+                if button.mouseClick(pygame.mouse.get_pos()) != False:
+                    mouseState = button.mouseClick(pygame.mouse.get_pos())
+                    if mouseState == "Reset":
+                        button.isActive = False
+                        isPathfinding = False
+                        for cell in cellSprites:
+                            cell.revertColour()
+                    else:
+                        for otherButton in buttons:
+                            if otherButton != button:
+                                otherButton.isActive = False
+                    break
+            
+            #Drawing/Removing Walls
             (mouseX, mouseY) = (cellSize*(pygame.mouse.get_pos()[0]//cellSize), cellSize*(pygame.mouse.get_pos()[1]//cellSize))
 
-            for cell in cellSprites:
-                if cell.x == mouseX and cell.y == mouseY and not cell.isWall:
-                    cell.swapWall()
-                    
-        #Add terminal cells
-        if pygame.mouse.get_pressed()[2]:
-            (mouseX, mouseY) = (cellSize*(pygame.mouse.get_pos()[0]//cellSize), cellSize*(pygame.mouse.get_pos()[1]//cellSize))
-                
-            
             for cell in cellSprites:
                 if cell.x == mouseX and cell.y == mouseY:
-                    selectedCell = cell
-                    break
-
-            if selectedCell not in terminalCells:
-                if len(terminalCells) >= 2:
-                    #Ensure that there are only two terminal cells
-                    oldestCell = terminalCells[0]
-                    oldestCell.swapTerminal()
-                    terminalCells.remove(oldestCell)
+                    if mouseState == "Draw Wall":
+                        cell.makeWall()
+                    elif mouseState == "Rem. Wall":
+                        cell.removeWall()
                     
-                terminalCells.append(cell)
-                selectedCell.swapTerminal()
+            #Adding terminal cells
+            if mouseState == "Set Start/End":
+                (mouseX, mouseY) = (cellSize*(pygame.mouse.get_pos()[0]//cellSize), cellSize*(pygame.mouse.get_pos()[1]//cellSize))
+
+                selectedCell = None
+                for cell in cellSprites:
+                    if cell.x == mouseX and cell.y == mouseY:
+                        selectedCell = cell
+                        break
+
+                if selectedCell != None and selectedCell not in terminalCells:
+                    if len(terminalCells) >= 2:
+                        #Ensure that there are only two terminal cells
+                        oldestCell = terminalCells[0]
+                        oldestCell.swapTerminal()
+                        terminalCells.remove(oldestCell)
+
+                    terminalCells.append(cell)
+                    selectedCell.swapTerminal()
             
             
+        #A* Algorithm
         if isPathfinding and len(terminalCells) == 2:
             pathfindingTick += 1
             if pathfindingTick >= 2:
@@ -203,13 +280,22 @@ def mainLoop():
         
         gameDisplay.fill((255,255,255))
         
+        text=font.render("Press 'p' to begin pathfinding", 1,(0,0,0))
+        gameDisplay.blit(text,(5,gameHeight+buffer-25))
+        text=font.render("Press 'c' to clear all walls", 1,(0,0,0))
+        gameDisplay.blit(text,(5,gameHeight+buffer-50))
+        
         for cell in cellSprites:
             cell.draw(gameDisplay)
+            
+        for button in buttons:
+            button.draw(gameDisplay)
         
         screen.blit(gameDisplay, (0,0))
         clock.tick(120)
         pygame.display.update()
-    
+ 
+font=pygame.font.Font('ReturnOfGanon.ttf',16)
     
 cellSprites = []
 
