@@ -13,6 +13,8 @@ screen = pygame.display.set_mode((gameWidth,gameHeight+buffer))
 
 pygame.display.set_caption("Pathfinding")
 
+pygame.display.set_icon(pygame.image.load("icon.png"))
+
 clock = pygame.time.Clock()
 
 
