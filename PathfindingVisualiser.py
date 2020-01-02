@@ -261,7 +261,15 @@ def mainLoop():
 
                     else:
                         for neighbour in nextSearchCell.getNeighbours(cellSprites):
+                            
                             potentialScore = nextSearchCell.pathCost + 1
+                            
+                            distX = abs(neighbour.x//nextSearchCell.cellSize - nextSearchCell.x//nextSearchCell.cellSize)
+                            distY = abs(neighbour.y//nextSearchCell.cellSize - nextSearchCell.y//nextSearchCell.cellSize)
+                            
+                            if  distX + distY > 1:
+                                potentialScore = nextSearchCell.pathCost + 1.4
+                            
                             
                             #If this path is shorter than this cell's current path, add it to the search list
                             if potentialScore < neighbour.pathCost:
